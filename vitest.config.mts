@@ -19,7 +19,7 @@ export default defineConfig({
       'dist',
       'build',
       'coverage',
-      'prisma/migrations',
+      // 'prisma/migrations',
       'public',
       'src/styles',
       '**/*.config.{js,ts,mjs,mts,cjs,cts}',
