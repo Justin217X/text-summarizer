@@ -3,6 +3,7 @@
 import React from "react"
 import { useState } from "react";
 import { useForm } from "react-hook-form"
+import { useAuth } from "@/app/context/AuthContext";
 import { Mail, Lock, User } from "lucide-react"
 import Image from "next/image";
 import quillIcon from "../../../public/quill-icon.png"
@@ -16,6 +17,7 @@ type FormInputs = {
 }
 
 export default function AuthForm() {
+  const { user, signup, login, logout } = useAuth();
   const [mode, setMode] = useState<"login" | "signup">("login");
 
   const {
@@ -24,22 +26,58 @@ export default function AuthForm() {
     watch,
     formState: { errors },
     reset,
-  } = useForm<FormInputs>()
+  } = useForm<FormInputs>();
 
   const passwordValue = watch("password");
 
    const onSubmit = (data: FormInputs) => {
-    if (mode === "login") {
-      console.log("Logging in:", data)
-      // TODO: call login API
-    } else {
-      console.log("Signing up:", data)
-      // TODO: call signup API
-    }
-    // pass `data.rememberMe` to backend/session logic
+    if (mode === "signup") {
+      if (data.password !== data.confirmPassword) {
+        alert("Passwords do not match");
+        return;
+      }
 
+      const success = signup(data.email, data.password, data.username);
+      if (success) {
+        setMode("login"); // switch to login after signup
+        reset();
+      }
+
+    } else {
+        const success = login(data.email, data.password, !!data.rememberMe);
+        if (success) {
+            reset();
+        }
+    }
     // wipe fields
     reset();
+  }
+
+  if (user) {
+    return (
+      <div className="flex-1 bg-gray-200 flex flex-col items-center justify-center p-8 min-h-screen">
+        <div className="flex items-center justify-center text-center">
+         <Image
+            src={quillIcon}
+            height={150}
+            width={150}
+            alt=""
+          />
+          <div className="flex items-center text-gray-700 text-4xl">
+            Compendia
+          </div>
+        </div>
+        <h2 className="w-full max-w-md flex items-center justify-center m-4 space-y-8 text-2xl text-gray-700">
+          Welcome, {user.username || user.email}!
+        </h2>
+        <button
+          onClick={logout}
+          className="w-full h-12 bg-red-500 m-4 hover:bg-red-600 text-white rounded-md"
+        >
+          Logout
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -173,7 +211,7 @@ export default function AuthForm() {
               type="submit"
               className="w-full h-12 bg-black hover:bg-gray-800 text-white rounded-md"
             >
-              {mode === "login" ? "Sign Up" : "Sign In"}
+              {mode === "login" ? "Sign In" : "Sign Up"}
             </button>
           </form>
 
