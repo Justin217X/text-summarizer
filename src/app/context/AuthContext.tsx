@@ -3,15 +3,15 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 type User = {
+    id: string,
     email: string,
-    password: string,
     username?: string
 }
 
 type AuthContextType = {
     user: User | null,
-    signup: (email: string, password: string, username?: string) => boolean,
-    login: (email: string, password: string, remember: boolean) => boolean,
+    signup: (email: string, password: string, username?: string, rememberMe?: boolean) => Promise<void>,
+    login: (email: string, password: string, rememberMe?: boolean) => Promise<void>,
     logout: () => void
 }
 
@@ -26,53 +26,54 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         if (savedUser) {
             setUser(JSON.parse(savedUser));
         }
-        // console.log("savedUser", savedUser);
     }, [])
 
-    const signup = (email: string, password: string, username?: string) => {
-        const users = JSON.parse(localStorage.getItem("users") || "[]");
+    async function signup(email: string, password: string, username?: string, rememberMe = false) {
+        const res = await fetch("/api/auth/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password, username }),
+        })
 
-        // prevent duplicate signup
-        if (users.find((u: User) => u.email === email)) {
-            alert("User already exists");
-            return false;
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || "Signup failed");
         }
 
-        const newUser: User = { email, password, username };
-        users.push(newUser);
-        localStorage.setItem("users", JSON.stringify(users));
-        alert("Signup successful, you can log in");
-        return true;
+        const data = await res.json();
+        setUser(data.user);
+        if (rememberMe) {
+            localStorage.setItem("user", JSON.stringify(data.user));
+        } else {
+            sessionStorage.setItem("user", JSON.stringify(data.user));
+        }
     }
 
-    const login = (email: string, password: string, remember: boolean) => {
-        const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
+    async function login(email: string, password: string, rememberMe = false) {
+        const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+        });
 
-        const existingUser = users.find(
-            (u) => u.email === email && u.password === password
-        );
-
-        // user not found
-        if (!existingUser) {
-            alert("Invalid credentials");
-            return false;
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || "Login failed");
         }
 
-        // persist session
-        if (remember) {
-            localStorage.setItem("user", JSON.stringify(existingUser));
-        } else  {
-            sessionStorage.setItem("user", JSON.stringify(existingUser));
+        const data = await res.json();
+        setUser(data.user);
+        if (rememberMe) {
+            localStorage.setItem("user", JSON.stringify(data.user));
+        } else {
+            sessionStorage.setItem("user", JSON.stringify(data.user));
         }
-
-        setUser(existingUser);
-        return true;
     }
 
-    const logout = () => {
+    function logout() {
+        setUser(null);
         localStorage.removeItem("user");
         sessionStorage.removeItem("user");
-        setUser(null);
     }
 
     return (
@@ -82,10 +83,10 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     )
 }
 
-export const useAuth = () => {
+export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {
         throw new Error("useAuth must be used inside AuthProvider");
     }
-    return context
+    return context;
 }
