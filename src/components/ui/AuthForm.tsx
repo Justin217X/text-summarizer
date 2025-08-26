@@ -17,7 +17,7 @@ type FormInputs = {
 }
 
 export default function AuthForm() {
-  const { user, signup, login, logout } = useAuth();
+  const { signup, login } = useAuth();
   const [mode, setMode] = useState<"login" | "signup">("login");
 
   const {
@@ -28,56 +28,21 @@ export default function AuthForm() {
     reset,
   } = useForm<FormInputs>();
 
-  const passwordValue = watch("password");
-
-   const onSubmit = (data: FormInputs) => {
-    if (mode === "signup") {
-      if (data.password !== data.confirmPassword) {
-        alert("Passwords do not match");
-        return;
-      }
-
-      const success = signup(data.email, data.password, data.username);
-      if (success) {
-        setMode("login"); // switch to login after signup
-        reset();
-      }
-
-    } else {
-        const success = login(data.email, data.password, !!data.rememberMe);
-        if (success) {
-            reset();
+   const onSubmit = async (data: FormInputs) => {
+    try {
+        if (mode === "signup") {
+            await signup(data.email, data.password, data.username, data.rememberMe);
+            alert("Signup successful!");
+        } else {
+            await login(data.email, data.password, data.rememberMe);
+            alert("Login successful!");
         }
+    } catch (err: any) {
+        alert(err.message || "Something went wrong");
     }
-    // wipe fields
-    reset();
-  }
 
-  if (user) {
-    return (
-      <div className="flex-1 bg-gray-200 flex flex-col items-center justify-center p-8 min-h-screen">
-        <div className="flex items-center justify-center text-center">
-         <Image
-            src={quillIcon}
-            height={150}
-            width={150}
-            alt=""
-          />
-          <div className="flex items-center text-gray-700 text-4xl">
-            Compendia
-          </div>
-        </div>
-        <h2 className="w-full max-w-md flex items-center justify-center m-4 space-y-8 text-2xl text-gray-700">
-          Welcome, {user.username || user.email}!
-        </h2>
-        <button
-          onClick={logout}
-          className="w-full h-12 bg-red-500 m-4 hover:bg-red-600 text-white rounded-md"
-        >
-          Logout
-        </button>
-      </div>
-    )
+    // wipe fields after submission
+    reset();
   }
 
   return (
@@ -99,7 +64,7 @@ export default function AuthForm() {
         {/* Sign In Form */}
         <div className="space-y-6">
           <h1 className="text-2xl font-semibold text-gray-900">
-            {mode === "login" ? "Sign In" : "Sign Up"}
+            {mode === "login" ? "Sign In" : "Create an account"}
           </h1>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -114,11 +79,11 @@ export default function AuthForm() {
                   <input
                     id="username"
                     placeholder="johndoe"
-                    {...register("username", { required: "Username is required" })}
+                    {...register("username")}
                     className="pl-10 w-full h-12 bg-white border-gray-200 text-gray-700 rounded-md"
                   />
                 </div>
-                {errors.username && <p className="text-red-500 text-sm">{errors.username.message}</p>}
+                {/* {errors.username && <p className="text-red-500 text-sm">{errors.username.message}</p>} */}
               </div>
             )}
 
@@ -154,8 +119,8 @@ export default function AuthForm() {
                   type="password"
                   placeholder="Enter Password"
                   {...register("password", {
-                  required: "Password is required",
-                  minLength: { value: 6, message: "Min length is 6" },
+                    required: "Password is required",
+                    minLength: { value: 6, message: "Password must be at least 6 characters" },
                   })}
                   className="pl-10 w-full h-12 bg-white border-gray-200 text-gray-700 rounded-md"
                 />
@@ -178,7 +143,7 @@ export default function AuthForm() {
                     {...register("confirmPassword", {
                       required: "Please confirm your password",
                       validate: (value) =>
-                        value === passwordValue || "Passwords do not match",
+                        value === watch("password") || "Passwords do not match",
                     })}
                     className="pl-10 w-full h-12 bg-white border-gray-200 text-gray-700 rounded-md"
                   />
