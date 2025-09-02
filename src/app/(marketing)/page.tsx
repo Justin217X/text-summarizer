@@ -22,7 +22,7 @@ export default function MarketingPage() {
   const [content, setContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [summaryType, setSummaryType] = useState<SummaryType>("brief");
-  const [isGeneratingSummary] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   // Load notes from localStorage on component mount
   useEffect(() => {
@@ -37,15 +37,33 @@ export default function MarketingPage() {
     localStorage.setItem("notes", JSON.stringify(notes))
   }, [notes])
 
+  const generateSummary = async (content: string, summaryType: SummaryType): Promise<string> => {
+    try {
+      const res = await fetch("api/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, summaryType }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to generate summary");
+      }
+
+      const data = await res.json();
+      return data.summary;
+    } catch (err) {
+      console.error(err);
+      return "Error generating summary";
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
 
+    setIsGeneratingSummary(true);
     const now = new Date().toISOString();
-    
-    // Temporary Naive summary: take first 2 sentences (or whole content if short) 
-    const sentences = content.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-    const summary = sentences.slice(0, 2).join(". ") + (sentences.length > 2 ? "..." : "");
+    const summary = await generateSummary(content, summaryType);
 
     if (editingId) {
       setNotes((prev) =>
@@ -71,16 +89,16 @@ export default function MarketingPage() {
 
     setTitle("");
     setContent("");
+    setIsGeneratingSummary(false);
   }
 
   const regenerateSummary = async (noteId: string, newSummaryType: SummaryType) => {
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) return;
+    setIsGeneratingSummary(true);
 
-    // Temporary Naive summary: take first 2 sentences (or whole content if short)
-    const sentences = note.content.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-    const newSummary = sentences.slice(0, 2).join(". ") + (sentences.length > 2 ? "..." : "");
-
+    const newSummary = await generateSummary(
+      notes.find((n) => n.id === noteId)?.content || "",
+      newSummaryType
+    )
 
     setNotes((prev) =>
       prev.map((n) =>
@@ -89,6 +107,7 @@ export default function MarketingPage() {
           : n,
       ),
     );
+    setIsGeneratingSummary(false);
   }
 
   const handleEdit = (note: Note) => {
@@ -220,6 +239,7 @@ export default function MarketingPage() {
                         value={note.summaryType || "brief"}
                         onChange={(e) => regenerateSummary(note.id, e.target.value as SummaryType)}
                         className="border p-1 rounded text-xs text-gray-700"
+                        disabled={isGeneratingSummary}
                       >
                         <option value="brief">Brief</option>
                         <option value="detailed">Detailed</option>
