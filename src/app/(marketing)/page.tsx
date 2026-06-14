@@ -39,10 +39,13 @@ export default function MarketingPage() {
 
   const generateSummary = async (content: string, summaryType: SummaryType): Promise<string> => {
     try {
-      const res = await fetch("api/summarize", {
+      const res = await fetch("http://127.0.0.1:5001/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, summaryType }),
+        body: JSON.stringify({
+          text: content,
+          style: summaryType,
+        }),
       });
 
       if (!res.ok) {
@@ -232,8 +235,8 @@ export default function MarketingPage() {
                 {note.summary && (
                   <div className="mt-3">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <Brain className="h-3 w-3" /> AI Summary ({note.summaryType || "brief"})
+                      <div className="flex items-center text-sm font-medium text-gray-700">
+                        AI Summary ({note.summaryType || "brief"})
                       </div>
                       <select
                         value={note.summaryType || "brief"}
